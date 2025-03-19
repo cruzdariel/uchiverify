@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verification Success | UChiVerify</title>
+    <style>
+        @font-face {
+            font-family: 'Gotham';
+            src: url("{{ url_for('static', filename='fonts/Gotham/Gotham-Book.otf') }}") format("opentype");
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Gotham Bold';
+            src: url("{{ url_for('static', filename='fonts/Gotham/Gotham-Bold.otf') }}") format("opentype");
+            font-weight: bold;
+            font-style: normal;
+        }
+
+        body {
+            font-family: 'Gotham', sans-serif;
+            background-color: #0F4D0F;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 100px auto;
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 6px 10px rgba(0,0,0,0.6);
+        }
+        h1 {
+            font-family: 'Gotham Bold', sans-serif;
+            color: #FFFFFF;
+            margin-bottom: 20px;
+            font-size: 2.5rem;
+        }
+        p {
+            font-family: 'Gotham', sans-serif;
+            color: #FFFFFF;
+            font-size: 18px;
+            margin-bottom: 30px;
+        }
+        }
+        .logo-container {
+            margin-bottom: 30px;
+        }
+        .logo-container img {
+            width: 150px;
+            height: auto;
+            filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.7));
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo-container">
+            <img src="https://camo.githubusercontent.com/a56e4acafe0c671c795cd5b1d86c7262514a99408d5a81d040dc45db8456bf6c/68747470733a2f2f692e696d6775722e636f6d2f74614967354b622e706e67" alt="UChicago Verification Logo">
+        </div>
+        <h1>Verification Success</h1>
+        <p>You have been issued the UChicago Verified role.</p>
+    </div>
+</body>
+</html>
