@@ -175,3 +175,6 @@ cython_debug/
 __pycache__
 venv
 .env
+verified_log.csv
+bot.log
+web.log
