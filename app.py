@@ -52,7 +52,7 @@ def start_auth():
         "client_id": OKTA_CLIENT_ID,
         "redirect_uri": "https://vps.dariel.us/auth/callback",
         "response_type": "code",
-        "scope": "openid email",   # request OIDC scopes (email gives us the user’s email)
+        "scope": "openid email",   # request OIDC scopes
         "state": state
     }
     
@@ -90,7 +90,8 @@ def auth_callback():
         return render_template("verificationfailed.html", error="Could not retrieve authentication token.")
     tokens = token_res.json()
     access_token = tokens.get("access_token")
-    # Use the access token to get the user's info (including email)
+
+    # Use the access token to get the user's info
     userinfo_res = requests.get(USERINFO_URL, headers={"Authorization": f"Bearer {access_token}"})
     if userinfo_res.status_code != 200:
         logger.error(f"Userinfo request failed: {userinfo_res.status_code} - {userinfo_res.text}")
@@ -100,11 +101,7 @@ def auth_callback():
     if not email:
         logger.error("No email found in OIDC profile!")
         return render_template("verificationfailed.html", error="Your email could not be obtained.")
-    # Log the successful verification to CSV file
-    with open("/home/dariel/uchiverify/verified_log.csv", "a", newline="") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow([datetime.now().isoformat(), guild_id, user_id, email])
-    logger.info(f"✅ Verified Discord user {user_id} (guild {guild_id}) with email {email}")
+    logger.info(f"Verified Discord user {user_id}, guild {guild_id}, email {email}")
     # Assign the "UChicago Verified" role in Discord via Bot API
     bot_token = os.getenv("DISCORD_BOT_TOKEN")
     if bot_token:
