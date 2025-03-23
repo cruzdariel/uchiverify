@@ -50,11 +50,6 @@ async def setchannel(interaction: discord.Interaction):
         return
     # Create the embed message
     embed = discord.Embed(
-        title="Verify your UChicago affiliation",
-        description="Click the button below to verify your UChicago email and get access.",
-        color=discord.Color.from_rgb(128, 0, 0)  # Maroon color
-    )
-    embed = discord.Embed(
         title="Verify your UChicago Affiliation",
         description="Click the button below to verify your UChicago email and get access.",
         colour=0x800000)
