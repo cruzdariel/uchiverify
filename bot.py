@@ -27,7 +27,7 @@ class VerifyView(discord.ui.View):
             style=discord.ButtonStyle.secondary,  # Grey button
             url="https://github.com/cruzdariel/uchiverify/blob/main/README.md#privacy-policy"
         ))
-    @discord.ui.button(label="Verify Now", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Verify Now", style=discord.ButtonStyle.primary, custom_id="verify_now_button")
     async def verify_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Handle button clicks by sending the user their unique verification link."""
         guild_id = interaction.guild.id
@@ -82,6 +82,7 @@ async def on_ready():
     # Sync slash commands with Discord (register globally)
     try:
         await bot.tree.sync()
+        bot.add_view(VerifyView())
         logging.info(f"Logged in as {bot.user}. Slash commands synced.")
     except Exception as e:
         logging.error(f"Failed to sync commands: {e}")
