@@ -6,6 +6,11 @@ A bot to authenticate users as UChicago affiliates, made for Transit Enthusiasts
 ## Open Source Disclaimer
 Although the code is open source, you won't be able to actually run the bot on your own without University IT sponsorship. UChiVerify runs on a secret key issued by the University to run on their Okta SSO system. If you want to run a similar bot, I reccomend using Google's [OAuth 2.0 API](https://developers.google.com/identity/sign-in/web/sign-in) and filtering only to email addresses ending in uchicago's domain name. The only caveat to this alternative method is that not all University affiliates have a GSuite account.
 
+### Running verification prompts on your own bot
+The endpoint for verification is `https://vps.dariel.us/uchiverify/auth/start?guild_id={guild_id}&user_id={user_id}`
+
+You could, in theory, set up your own custom verification prompt where users are given a custom link with prefilled guild and/or user ID parameters. However, in order for role assignment to function properly, **you must have the UChiVerify bot in the server, even if the bot wouldn't be directly interacting with end users.** UChiVerify is the only bot that is able to issue roles *for now*. I'm working on a process to potentially create API keys that control access to the Okta secret keys for other developers to run everything in-house.
+
 ## Setting up
 ### Required Permissions
 UChiVerify requires the following permissions:
