@@ -13,9 +13,9 @@ def get_random_article():
     with open(CSV_PATH, newline='', encoding='utf-8') as csvfile:
         reader = list(csv.DictReader(csvfile))
         article = random.choice(reader)
-        title = article.get("title", "Untitled").strip()
-        url = article.get("url", "").strip()
-        author = article.get("author", "Unknown").strip()
+        title = article.get("Title", "Untitled").strip()
+        url = article.get("URL", "").strip()
+        author = article.get("Author", "Unknown").strip()
         return title, url, author
 
 # Logging configuration: logs to file and console
@@ -96,7 +96,7 @@ async def random_article(interaction: discord.Interaction):
 
     # Disable embed preview
     await interaction.response.send_message(
-        content=f"<{url}>\n**[{title}]({url})**\n*by {author}*",
+        content=f"**[{title}]({url})**\n*by {author}*",
         allowed_mentions=discord.AllowedMentions.none()
     )
     logging.info(f"/randomarticle used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
