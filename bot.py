@@ -3,7 +3,20 @@ import logging
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+import csv
+import random
 load_dotenv()
+
+CSV_PATH = "shadydealer.csv"
+
+def get_random_article():
+    with open(CSV_PATH, newline='', encoding='utf-8') as csvfile:
+        reader = list(csv.DictReader(csvfile))
+        article = random.choice(reader)
+        title = article.get("title", "Untitled").strip()
+        url = article.get("url", "").strip()
+        author = article.get("author", "Unknown").strip()
+        return title, url, author
 
 # Logging configuration: logs to file and console
 logging.basicConfig(
@@ -76,6 +89,17 @@ async def support(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
     logging.info(f"/gethelp used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
+
+@bot.tree.command(name="shadydealer", description="Get a random article title from the Shady Dealer")
+async def random_article(interaction: discord.Interaction):
+    title, url, author = get_random_article()
+
+    # Disable embed preview
+    await interaction.response.send_message(
+        content=f"<{url}>\n**[{title}]({url})**\n*by {author}*",
+        allowed_mentions=discord.AllowedMentions.none()
+    )
+    logging.info(f"/randomarticle used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
 
 @bot.event
 async def on_ready():
