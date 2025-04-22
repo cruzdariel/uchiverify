@@ -5,6 +5,11 @@ from discord.ext import commands
 from dotenv import load_dotenv
 import csv
 import random
+import pytz
+import urllib.parse
+import re
+from datetime import datetime, timedelta
+import requests
 load_dotenv()
 
 CSV_PATH = "shadydealer.csv"
@@ -100,6 +105,55 @@ async def random_article(interaction: discord.Interaction):
         allowed_mentions=discord.AllowedMentions.none()
     )
     logging.info(f"/randomarticle used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
+
+@bot.tree.command(name="thingstodo", description="Returns a random RSO event from UChicago Blueprint")
+async def thingstodo(interaction: discord.Interaction):
+    await interaction.response.defer()  # Optional: gives bot time to process
+
+    now = datetime.now().astimezone()
+    one_week_later = now + timedelta(days=7)
+    encoded_time = urllib.parse.quote(now.isoformat(), safe='')
+
+    url = (
+        f"https://blueprint.uchicago.edu/api/discovery/event/search?"
+        f"endsAfter={encoded_time}&orderByField=endsOn&orderByDirection=ascending&"
+        f"status=Approved&take=50&query="
+    )
+
+    try:
+        r = requests.get(url)
+        r.raise_for_status()
+        events = r.json()["value"]
+    except Exception as e:
+        print("API error:", e)
+        await interaction.followup.send("❌ Couldn't fetch events. Try again later.")
+        return
+
+    # Filter for next 7 days
+    upcoming_events = []
+    for event in events:
+        start_time = datetime.fromisoformat(event["startsOn"])
+        if now <= start_time <= one_week_later:
+            upcoming_events.append(event)
+
+    if not upcoming_events:
+        await interaction.followup.send("No events found in the next 7 days.")
+        return
+
+    # Pick a random event
+    event = random.choice(upcoming_events)
+    clean_desc = re.sub('<[^<]+?>', '', event["description"])
+    date_str = start_time.strftime("%A, %B %-d, %Y at %-I:%M %p")
+    location = event["location"] or "TBA"
+    url = f"https://blueprint.uchicago.edu/event/{event["id"]}"
+
+    message = (
+        f"**[{event['name']}]({url})**\n"
+        f"*{date_str} | {location}*\n"
+        f"{clean_desc[:150]}{'...' if len(clean_desc) > 300 else ''}"
+    )
+
+    await interaction.followup.send(message)
 
 @bot.event
 async def on_ready():
