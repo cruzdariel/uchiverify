@@ -106,51 +106,82 @@ async def random_article(interaction: discord.Interaction):
     )
     logging.info(f"/randomarticle used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
 
-@bot.tree.command(name="thingstodo", description="Returns a random RSO event from UChicago Blueprint")
+@bot.tree.command(name="thingstodo", description="Returns a random RSO event from UChicago Blueprint or events.uchicago.edu")
 async def thingstodo(interaction: discord.Interaction):
-    await interaction.response.defer()  # Optional: gives bot time to process
+    await interaction.response.defer()
 
+    events_combined = {}
     now = datetime.now().astimezone()
-    one_week_later = now + timedelta(days=7)
+    cst = pytz.timezone("US/Central")
     encoded_time = urllib.parse.quote(now.isoformat(), safe='')
 
-    url = (
-        f"https://blueprint.uchicago.edu/api/discovery/event/search?"
-        f"endsAfter={encoded_time}&orderByField=endsOn&orderByDirection=ascending&"
-        f"status=Approved&take=50&query="
-    )
-
+    # === Source 1: Blueprint ===
     try:
-        r = requests.get(url)
-        r.raise_for_status()
-        events = r.json()["value"]
+        url1 = (
+            f"https://blueprint.uchicago.edu/api/discovery/event/search?"
+            f"endsAfter={encoded_time}&orderByField=endsOn&orderByDirection=ascending&"
+            f"status=Approved&take=25&query="
+        )
+        r1 = requests.get(url1)
+        r1.raise_for_status()
+        data1 = r1.json()["value"]
+
+        for i, event in enumerate(data1):
+            name = event["name"]
+            event_url = f"https://blueprint.uchicago.edu/event/{event['id']}"
+            date = datetime.fromisoformat(event["startsOn"])
+            date_str = date.strftime("%A, %B %-d, %Y at %-I:%M %p")
+            desc = re.sub('<[^<]+?>', '', event["description"])[:150]
+            location = event["location"] or "TBA"
+
+            events_combined[f"bp_{i}"] = {
+                "name": name,
+                "url": event_url,
+                "date": date_str,
+                "location": location,
+                "desc": desc,
+                "source": "Blueprint"
+            }
     except Exception as e:
-        print("API error:", e)
-        await interaction.followup.send("❌ Couldn't fetch events. Try again later.")
+        print("Blueprint error:", e)
+
+    # === Source 2: UChicago Events ===
+    try:
+        url2 = "https://events.uchicago.edu/live/json/events"
+        r2 = requests.get(url2)
+        r2.raise_for_status()
+        data2 = r2.json()["data"]
+
+        for i, event in enumerate(data2):
+            name = event["title"]
+            event_url = event["url"]
+            date_utc = datetime.strptime(event["date_utc"], "%Y-%m-%d %H:%M:%S")
+            date = date_utc.astimezone(cst)
+            date_str = date.strftime("%A, %B %-d, %Y at %-I:%M %p")
+            location = "Online" if event["is_online"] == 1 else "In-Person"
+
+            events_combined[f"uc_{i}"] = {
+                "name": name,
+                "url": event_url,
+                "date": date_str,
+                "location": location,
+                "desc": "No description",  # description just repeats the URL
+                "source": "UChicago Events"
+            }
+    except Exception as e:
+        print("UChicago Events error:", e)
+
+    if not events_combined:
+        await interaction.followup.send("❌ No events found at the moment.")
         return
 
-    # Filter for next 7 days
-    upcoming_events = []
-    for event in events:
-        start_time = datetime.fromisoformat(event["startsOn"])
-        if now <= start_time <= one_week_later:
-            upcoming_events.append(event)
-
-    if not upcoming_events:
-        await interaction.followup.send("No events found in the next 7 days.")
-        return
-
-    # Pick a random event
-    event = random.choice(upcoming_events)
-    clean_desc = re.sub('<[^<]+?>', '', event["description"])
-    date_str = start_time.strftime("%A, %B %-d, %Y at %-I:%M %p")
-    location = event["location"] or "TBA"
-    url = f"https://blueprint.uchicago.edu/event/{event["id"]}"
-
+    # === Pick One and Format ===
+    event = random.choice(list(events_combined.values()))
     message = (
-        f"**[{event['name']}]({url})**\n"
-        f"*{date_str} | {location}*\n"
-        f"{clean_desc[:150]}{'...' if len(clean_desc) > 300 else ''}"
+        f"[**{event['name']}**]({event['url']})\n"
+        f"*{event['date']} | {event['location']}*\n"
+        f"{event['desc']}\n"
+        f"-# Source: {event['source']}"
     )
 
     await interaction.followup.send(message)
