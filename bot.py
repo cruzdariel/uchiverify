@@ -13,6 +13,7 @@ import requests
 load_dotenv()
 
 CSV_PATH = "shadydealer.csv"
+SCAV_PATH = "scav.csv"
 
 def get_random_article():
     with open(CSV_PATH, newline='', encoding='utf-8') as csvfile:
@@ -21,6 +22,15 @@ def get_random_article():
         title = article.get("Title", "Untitled").strip()
         url = article.get("URL", "").strip()
         author = article.get("Author", "Unknown").strip()
+        return title, url, author
+
+def get_random_scav():
+    with open(SCAV_PATH, newline='', encoding='utf-8') as csvfile:
+        reader = list(csv.DictReader(csvfile))
+        item = random.choice(reader)
+        number = item.get("Item", "UNK ITEM.").strip()
+        description = item.get("Description", "").strip()
+        pointvalue = item.get("Points", "[UNK POINTS]").strip()
         return title, url, author
 
 # Logging configuration: logs to file and console
@@ -105,6 +115,18 @@ async def random_article(interaction: discord.Interaction):
         allowed_mentions=discord.AllowedMentions.none()
     )
     logging.info(f"/randomarticle used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
+
+@bot.tree.command(name="scav", description="Get a random item from a Scav list (1998-2024)")
+async def random_scav(interaction: discord.Interaction):
+    number, description, pointvalue = get_random_scav()
+
+    # Disable embed preview
+    await interaction.response.send_message(
+        content=(f"{number}. {description} [{pointvalue}]"
+        f"-# Is this item weirdly formatted? Let the bot developer know."),
+        allowed_mentions=discord.AllowedMentions.none()
+    )
+    logging.info(f"/scav used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
 
 @bot.tree.command(name="thingstodo", description="Returns a random RSO event from UChicago Blueprint or events.uchicago.edu")
 async def thingstodo(interaction: discord.Interaction):
