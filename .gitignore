@@ -178,4 +178,3 @@ venv
 verified_log.csv
 bot.log
 web.log
-*.csv

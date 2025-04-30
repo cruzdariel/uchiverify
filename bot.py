@@ -31,7 +31,7 @@ def get_random_scav():
         number = item.get("Item", "UNK ITEM.").strip()
         description = item.get("Description", "").strip()
         pointvalue = item.get("Points", "[UNK POINTS]").strip()
-        return title, url, author
+        return number, description, pointvalue
 
 # Logging configuration: logs to file and console
 logging.basicConfig(
@@ -122,7 +122,7 @@ async def random_scav(interaction: discord.Interaction):
 
     # Disable embed preview
     await interaction.response.send_message(
-        content=(f"{number}. {description} [{pointvalue}]"
+        content=(f"{number}. {description} [{pointvalue}]\n"
         f"-# Is this item weirdly formatted? Let the bot developer know."),
         allowed_mentions=discord.AllowedMentions.none()
     )
