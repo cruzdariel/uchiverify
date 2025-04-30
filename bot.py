@@ -2,6 +2,7 @@ import os
 import logging
 import discord
 from discord.ext import commands
+from discord import app_commands
 from dotenv import load_dotenv
 import csv
 import random
@@ -32,6 +33,41 @@ def get_random_scav():
         description = item.get("Description", "").strip()
         pointvalue = item.get("Points", "[UNK POINTS]").strip()
         return number, description, pointvalue
+
+def search_course(query):
+    searchurl = (
+        f"https://api.uofcourses.com/Courses/Search"
+        f"?queryString={query}&page=0&pageSize=1"
+    )
+    resp = requests.get(searchurl)
+    if resp.status_code != 200:
+        return "", "", f"Search failed [{resp.status_code}] for `{query}`"
+
+    courses = resp.json().get("courses", [])
+    if not courses:
+        # no courses returned at all
+        return "", "", f"No course found for `{query}`."
+
+    course = courses[0]
+    # see if the user’s query actually matches one of the courseNumbers
+    if any(query.lower() in cn.lower() for cn in course.get("courseNumbers", [])):
+        # exact-ish match → fetch the review URL
+        def get_latest_review_link(num):
+            ci = requests.get(f"https://api.uofcourses.com/Courses/Course/{num}")
+            data_ci = ci.json()
+            try:
+                return data_ci["sections"][0]["url"]
+            except (IndexError, KeyError):
+                return ""
+        return (
+            course["courseNumbers"][0],
+            course["title"],
+            get_latest_review_link(course["id"])
+        )
+    else:
+        # found something, but query didn’t match the normalized courseNumbers
+        suggestion = course["courseNumbers"][0]
+        return "", "", f"No course found for `{query}` (did you mean `{suggestion}`?)"
 
 # Logging configuration: logs to file and console
 logging.basicConfig(
@@ -127,6 +163,31 @@ async def random_scav(interaction: discord.Interaction):
         allowed_mentions=discord.AllowedMentions.none()
     )
     logging.info(f"/scav used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
+
+@bot.tree.command(name="coursereview", description="Find reviews for a course code")
+@app_commands.describe(query="Course code to search, e.g. DATA 11800")
+async def get_course_url(interaction: discord.Interaction, query: str):
+    coursenum, coursename, reviewurl = search_course(query)
+
+    # three cases:
+    if coursename and reviewurl:
+        # happy path
+        strpayload = f"[{coursenum} - {coursename}]({reviewurl})"
+    elif coursename and not reviewurl:
+        # we found the course but no reviews
+        strpayload = f"{coursenum} - {coursename} has no course review."
+    else:
+        # coursename == "" → reviewurl holds our error/suggestion string
+        strpayload = reviewurl
+
+    await interaction.response.send_message(
+        content=(
+            f"{strpayload}\n"
+            f"-# Data Source: UofCourses"
+        ),
+        allowed_mentions=discord.AllowedMentions.none()
+    )
+    logging.info(f"/coursereview used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
 
 @bot.tree.command(name="thingstodo", description="Returns a random RSO event from UChicago Blueprint or events.uchicago.edu")
 async def thingstodo(interaction: discord.Interaction):
