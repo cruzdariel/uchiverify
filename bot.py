@@ -123,7 +123,7 @@ async def random_scav(interaction: discord.Interaction):
     # Disable embed preview
     await interaction.response.send_message(
         content=(f"{number}. {description} [{pointvalue}]\n"
-        f"-# Is this item weirdly formatted? Let the bot developer know."),
+        f"-# SCAV SCAV SCAV! Is this item weirdly formatted? Let the bot developer know."),
         allowed_mentions=discord.AllowedMentions.none()
     )
     logging.info(f"/scav used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
