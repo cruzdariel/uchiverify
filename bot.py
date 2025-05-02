@@ -84,9 +84,9 @@ async def start_health_server():
     app.add_routes(routes)
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, "127.0.0.1", 8765)
+    site = web.TCPSite(runner, "0.0.0.0", 8765)
     await site.start()
-    print("🌐 Health endpoint running at http://127.0.0.1:8765/bothealth")
+    print("🌐 Health endpoint running at http://0.0.0.0:8765/bothealth")
 
 # Logging configuration: logs to file and console
 logging.basicConfig(
