@@ -11,6 +11,8 @@ import urllib.parse
 import re
 from datetime import datetime, timedelta
 import requests
+from aiohttp import web
+import asyncio
 load_dotenv()
 
 CSV_PATH = "shadydealer.csv"
@@ -68,6 +70,23 @@ def search_course(query):
         # found something, but query didn’t match the normalized courseNumbers
         suggestion = course["courseNumbers"][0]
         return "", "", f"No course found for `{query}` (did you mean `{suggestion}`?)"
+
+# ── Health endpoint ───────────────────────────────────────────────────────────
+routes = web.RouteTableDef()
+
+@routes.get("/bothealth")
+async def health(request):
+    # you could add deeper checks here if you like
+    return web.json_response({"status": "ok"}, status=200)
+
+async def start_health_server():
+    app = web.Application()
+    app.add_routes(routes)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "127.0.0.1", 8765)
+    await site.start()
+    print("🌐 Health endpoint running at http://127.0.0.1:8765/bothealth")
 
 # Logging configuration: logs to file and console
 logging.basicConfig(
@@ -284,4 +303,11 @@ if __name__ == "__main__":
     if not TOKEN:
         logging.error("Discord bot token not set. Please export DISCORD_BOT_TOKEN.")
         exit(1)
-    bot.run(TOKEN)
+
+    async def main():
+        # 1) spin up health server
+        await start_health_server()
+        # 2) then start Discord bot (this will block until shutdown)
+        await bot.start(TOKEN)
+
+    asyncio.run(main())
