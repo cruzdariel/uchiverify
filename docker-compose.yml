@@ -14,5 +14,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.bot
+    ports:
+      - "8765:8765"
     restart: always
     env_file: .env
