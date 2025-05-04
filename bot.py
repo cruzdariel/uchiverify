@@ -219,7 +219,7 @@ async def get_course_url(interaction: discord.Interaction, query: str):
 
     # 2) Call our non-blocking search, catching network/API errors
     try:
-        coursenum, coursename, reviewurl = await search_course_async(query)
+        coursenum, coursename, reviewurl = await search_course(query)
     except aiohttp.ClientError as e:
         return await interaction.followup.send(
             f"🚨 Could not contact course API: {e}"
