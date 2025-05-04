@@ -37,67 +37,67 @@ def get_random_scav():
         pointvalue = item.get("Points", "[UNK POINTS]").strip()
         return number, description, pointvalue
 
-async def search_course(query: str):
-    """
-    Returns (coursenum, coursename, reviewurl)
-    or raises aiohttp.ClientError on network/API failures,
-    or returns ("", "", error_message) if the API returned no data.
-    """
-    base = "https://api.uofcourses.com"
-    timeout = ClientTimeout(total=5)
-    async with aiohttp.ClientSession(timeout=timeout) as session:
-        # 1) Search endpoint
-        url_search = f"{base}/Courses/Search?queryString={query}&page=0&pageSize=1"
-        async with session.get(url_search) as resp:
-            if resp.status != 200:
-                return "", "", f"Search failed [{resp.status}] for `{query}`"
-            data = await resp.json()
-
-        courses = data.get("courses", [])
-        if not courses:
-            return "", "", f"No course found for `{query}`."
-
-        course = courses[0]
-        # Check the query against normalized courseNumbers
-        if not any(query.lower() in cn.lower() for cn in course.get("courseNumbers", [])):
-            suggestion = course["courseNumbers"][0]
-            return "", "", f"No course found for `{query}` (did you mean `{suggestion}`?)"
-
-        # 2) Fetch the review link
-        course_id = course["id"]
-        url_detail = f"{base}/Courses/Course/{course_id}"
-        async with session.get(url_detail) as resp2:
-            if resp2.status != 200:
-                review_url = ""
-            else:
-                detail = await resp2.json()
-                try:
-                    review_url = detail["sections"][0]["url"]
-                except (KeyError, IndexError):
-                    review_url = ""
-
-        return course["courseNumbers"][0], course["title"], review_url
-
-    course = courses[0]
-    # see if the user’s query actually matches one of the courseNumbers
-    if any(query.lower() in cn.lower() for cn in course.get("courseNumbers", [])):
-        # exact-ish match → fetch the review URL
-        def get_latest_review_link(num):
-            ci = requests.get(f"https://api.uofcourses.com/Courses/Course/{num}")
-            data_ci = ci.json()
-            try:
-                return data_ci["sections"][0]["url"]
-            except (IndexError, KeyError):
-                return ""
-        return (
-            course["courseNumbers"][0],
-            course["title"],
-            get_latest_review_link(course["id"])
-        )
-    else:
-        # found something, but query didn’t match the normalized courseNumbers
-        suggestion = course["courseNumbers"][0]
-        return "", "", f"No course found for `{query}` (did you mean `{suggestion}`?)"
+#async def search_course(query: str):
+#    """
+#    Returns (coursenum, coursename, reviewurl)
+#    or raises aiohttp.ClientError on network/API failures,
+#    or returns ("", "", error_message) if the API returned no data.
+#    """
+#    base = "https://api.uofcourses.com"
+#    timeout = ClientTimeout(total=5)
+#    async with aiohttp.ClientSession(timeout=timeout) as session:
+#        # 1) Search endpoint
+#        url_search = f"{base}/Courses/Search?queryString={query}&page=0&pageSize=1"
+#        async with session.get(url_search) as resp:
+#            if resp.status != 200:
+#                return "", "", f"Search failed [{resp.status}] for `{query}`"
+#            data = await resp.json()
+#
+#        courses = data.get("courses", [])
+#        if not courses:
+#            return "", "", f"No course found for `{query}`."
+#
+#        course = courses[0]
+#        # Check the query against normalized courseNumbers
+#        if not any(query.lower() in cn.lower() for cn in course.get("courseNumbers", [])):
+#            suggestion = course["courseNumbers"][0]
+#            return "", "", f"No course found for `{query}` (did you mean `{suggestion}`?)"
+#
+#        # 2) Fetch the review link
+#        course_id = course["id"]
+#        url_detail = f"{base}/Courses/Course/{course_id}"
+#        async with session.get(url_detail) as resp2:
+#            if resp2.status != 200:
+#                review_url = ""
+#            else:
+#                detail = await resp2.json()
+#               try:
+#                    review_url = detail["sections"][0]["url"]
+#                except (KeyError, IndexError):
+#                    review_url = ""
+#
+#        return course["courseNumbers"][0], course["title"], review_url
+#
+#    course = courses[0]
+#    # see if the user’s query actually matches one of the courseNumbers
+#    if any(query.lower() in cn.lower() for cn in course.get("courseNumbers", [])):
+#        # exact-ish match → fetch the review URL
+#        def get_latest_review_link(num):
+#            ci = requests.get(f"https://api.uofcourses.com/Courses/Course/{num}")
+#            data_ci = ci.json()
+#            try:
+#                return data_ci["sections"][0]["url"]
+#            except (IndexError, KeyError):
+#                return ""
+#        return (
+#            course["courseNumbers"][0],
+#            course["title"],
+#            get_latest_review_link(course["id"])
+#        )
+#    else:
+#        # found something, but query didn’t match the normalized courseNumbers
+#        suggestion = course["courseNumbers"][0]
+#        return "", "", f"No course found for `{query}` (did you mean `{suggestion}`?)"
 
 # ── Health endpoint ───────────────────────────────────────────────────────────
 routes = web.RouteTableDef()
@@ -211,34 +211,34 @@ async def random_scav(interaction: discord.Interaction):
     )
     logging.info(f"/scav used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
 
-@bot.tree.command(name="coursereview", description="Find reviews for a course code")
-@app_commands.describe(query="Course code to search, e.g. DATA 11800")
-async def get_course_url(interaction: discord.Interaction, query: str):
-    # 1) Acknowledge immediately so Discord doesn’t auto‐cancel after 3 s
-    await interaction.response.defer(ephemeral=True)
-
-    # 2) Call our non-blocking search, catching network/API errors
-    try:
-        coursenum, coursename, reviewurl = await search_course(query)
-    except aiohttp.ClientError as e:
-        return await interaction.followup.send(
-            f"🚨 Could not contact course API: {e}"
-        )
-
-    # 3) Format the three possible outcomes
-    if coursename and reviewurl:
-        payload = f"[{coursenum} – {coursename}]({reviewurl})"
-    elif coursename:
-        payload = f"{coursenum} – {coursename} has no course review."
-    else:
-        payload = reviewurl  # holds our error or suggestion message
-
-    # 4) Send the follow-up reply
-    await interaction.followup.send(
-        content=f"{payload}\n-# Data Source: UofCourses",
-        allowed_mentions=discord.AllowedMentions.none()
-    )
-    logging.info(f"/coursereview used by {interaction.user.id} in {interaction.guild.id}")
+#@bot.tree.command(name="coursereview", description="Find reviews for a course code")
+#@app_commands.describe(query="Course code to search, e.g. DATA 11800")
+#async def get_course_url(interaction: discord.Interaction, query: str):
+#    # 1) Acknowledge immediately so Discord doesn’t auto‐cancel after 3 s
+#    await interaction.response.defer(ephemeral=True)
+#
+#    # 2) Call our non-blocking search, catching network/API errors
+#    try:
+#        coursenum, coursename, reviewurl = await search_course(query)
+#    except aiohttp.ClientError as e:
+#        return await interaction.followup.send(
+#            f"🚨 Could not contact course API: {e}"
+#        )
+#
+#    # 3) Format the three possible outcomes
+#    if coursename and reviewurl:
+#        payload = f"[{coursenum} – {coursename}]({reviewurl})"
+#    elif coursename:
+#        payload = f"{coursenum} – {coursename} has no course review."
+#    else:
+#        payload = reviewurl  # holds our error or suggestion message
+#
+#    # 4) Send the follow-up reply
+#    await interaction.followup.send(
+#        content=f"{payload}\n-# Data Source: UofCourses",
+#        allowed_mentions=discord.AllowedMentions.none()
+#    )
+#    logging.info(f"/coursereview used by {interaction.user.id} in {interaction.guild.id}")
 
 @bot.tree.command(name="thingstodo", description="Returns a random RSO event from UChicago Blueprint or events.uchicago.edu")
 async def thingstodo(interaction: discord.Interaction):
