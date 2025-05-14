@@ -37,6 +37,28 @@ def get_random_scav():
         pointvalue = item.get("Points", "[UNK POINTS]").strip()
         return number, description, pointvalue
 
+def days_in_quarter(year_start, month_start, day_start, year, month, day, quarter_name, tz_name='America/Chicago'):
+    # set up timezone and “now”
+    tz  = pytz.timezone(tz_name)
+    now = datetime.now(tz)
+    
+    # your manually chosen target date at midnight
+    target = tz.localize(datetime(year, month, day, 0, 0, 0))
+    
+    # compute the difference
+    delta       = target - now
+    days        = delta.days
+    rem_seconds = delta.seconds
+    minutes     = rem_seconds // 60
+    seconds     = rem_seconds % 60
+
+    start_date = tz.localize(datetime(year_start, month_start, day_start, 0, 0, 0))
+    daysspent = (now - start_date).days
+    
+    message = f"DAY NUMBER {daysspent}!! 🔔 There are {days} days, {minutes} minutes, and {seconds} seconds remaining in {quarter_name} quarter. \n https://vps.dariel.us/uchiverify/images/{daysspent}.png"
+    return message
+
+
 #async def search_course(query: str):
 #    """
 #    Returns (coursenum, coursename, reviewurl)
@@ -188,7 +210,7 @@ async def support(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, ephemeral=True)
     logging.info(f"/gethelp used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
 
-@bot.tree.command(name="shadydealer", description="Get a random article title from the Shady Dealer")
+@bot.tree.command(name="shadydealer", description="Get a random article title from the Shady Dealer.")
 async def random_article(interaction: discord.Interaction):
     title, url, author = get_random_article()
 
@@ -198,6 +220,16 @@ async def random_article(interaction: discord.Interaction):
         allowed_mentions=discord.AllowedMentions.none()
     )
     logging.info(f"/randomarticle used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
+
+@bot.tree.command(name="daysinquarter", description="Use this command if you're wondering how long the rest of your journey will be this quarter.")
+async def daysinquarter(interaction: discord.Interaction):
+    message = days_in_quarter(year_start, month_start, day_start, year, month, day, quarter_name, tz_name='America/Chicago')
+
+    await interaction.response.send_message(
+        content=message
+        allowed_mentions=discord.AllowedMentions.none()
+    )
+    logging.info(f"/daysinquarter used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
 
 @bot.tree.command(name="scav", description="Get a random item from a Scav list (1998-2024)")
 async def random_scav(interaction: discord.Interaction):
