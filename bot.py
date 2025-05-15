@@ -57,7 +57,7 @@ def days_in_quarter(year_start, month_start, day_start, year, month, day, quarte
     start_date = tz.localize(datetime(year_start, month_start, day_start, 0, 0, 0))
     daysspent = (now - start_date).days
     
-    message = f"DAY NUMBER {daysspent}!! 🔔 There are {days} days, {hours}, hours, {minutes} minutes, and {seconds} seconds remaining in {quarter_name} quarter. \n https://vps.dariel.us/uchiverify/images/{daysspent}.png"
+    message = f"**DAY NUMBER {daysspent}!! 🔔** There are {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds remaining in {quarter_name} quarter. \n\n https://vps.dariel.us/uchiverify/images/{daysspent}.png"
     return message
 
 
@@ -225,7 +225,7 @@ async def random_article(interaction: discord.Interaction):
 
 @bot.tree.command(name="daysinquarter", description="Use this command if you're wondering how long the rest of your journey will be this quarter.")
 async def daysinquarter(interaction: discord.Interaction):
-    message = days_in_quarter(2025, 3, 24, 2025, 5, 30, "Winter", tz_name='America/Chicago')
+    message = days_in_quarter(2025, 3, 24, 2025, 5, 30, "Spring", tz_name='America/Chicago')
 
     await interaction.response.send_message(
         content=message,
