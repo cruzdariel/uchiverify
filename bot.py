@@ -57,7 +57,7 @@ def days_in_quarter(year_start, month_start, day_start, year, month, day, quarte
     start_date = tz.localize(datetime(year_start, month_start, day_start, 0, 0, 0))
     daysspent = (now - start_date).days
     
-    message = f"**DAY NUMBER {daysspent}!! 🔔** There are {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds remaining in {quarter_name}. \n\n https://vps.dariel.us/uchiverify/images/{daysspent}.png"
+    message = f"**DAY NUMBER {daysspent} OF {quarter_name.upper()}!! 🔔** There are {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds remaining in {quarter_name}. \n\n https://vps.dariel.us/uchiverify/images/{daysspent}.png"
     return message
 
 
