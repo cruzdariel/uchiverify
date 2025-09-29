@@ -225,7 +225,7 @@ async def random_article(interaction: discord.Interaction):
 
 @bot.tree.command(name="daysinquarter", description="Use this command if you're wondering how long the rest of your journey will be this quarter.")
 async def daysinquarter(interaction: discord.Interaction):
-    message = days_in_quarter(2025, 6, 2, 2025, 9, 29, "Summer", tz_name='America/Chicago')
+    message = days_in_quarter(2025, 9, 29, 2025, 12, 13, "Autumn quarter", tz_name='America/Chicago')
     await interaction.response.send_message(
         content=message,
         allowed_mentions=discord.AllowedMentions.none()
