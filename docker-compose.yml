@@ -18,3 +18,5 @@ services:
       - "8765:8765"
     restart: always
     env_file: .env
+    volumes:
+      - ./command_stats.json:/app/command_stats.json
