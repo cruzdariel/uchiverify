@@ -43,14 +43,41 @@ def save_stats(stats):
     except Exception as e:
         logging.error(f"Failed to save stats: {e}")
 
-def track_command(command_name: str):
+def track_command(command_name: str, guild_id: int = None):
     """Track command usage statistics (anonymized - no user data collected)."""
     stats = load_stats()
 
-    # Track command counts only
+    # Track global command counts (legacy support)
     if command_name not in stats["commands"]:
         stats["commands"][command_name] = 0
     stats["commands"][command_name] += 1
+
+    # Track per-server stats if guild_id provided
+    if guild_id:
+        # Initialize servers dict if it doesn't exist
+        if "servers" not in stats:
+            stats["servers"] = {}
+
+        guild_id_str = str(guild_id)
+        if guild_id_str not in stats["servers"]:
+            stats["servers"][guild_id_str] = {
+                "commands": {},
+                "daily": {}
+            }
+
+        # Track total command count for this server
+        if command_name not in stats["servers"][guild_id_str]["commands"]:
+            stats["servers"][guild_id_str]["commands"][command_name] = 0
+        stats["servers"][guild_id_str]["commands"][command_name] += 1
+
+        # Track daily usage
+        today = datetime.now(pytz.timezone('America/Chicago')).strftime('%Y-%m-%d')
+        if today not in stats["servers"][guild_id_str]["daily"]:
+            stats["servers"][guild_id_str]["daily"][today] = {}
+
+        if command_name not in stats["servers"][guild_id_str]["daily"][today]:
+            stats["servers"][guild_id_str]["daily"][today][command_name] = 0
+        stats["servers"][guild_id_str]["daily"][today][command_name] += 1
 
     save_stats(stats)
 
@@ -84,28 +111,49 @@ def get_safe_username(user):
         return user.name
     return display_name
 
-def days_in_quarter(year_start, month_start, day_start, year, month, day, quarter_name, tz_name='America/Chicago'):
-    # set up timezone and "now"
+def days_in_quarter(tz_name="America/Chicago"):
     tz  = pytz.timezone(tz_name)
     now = datetime.now(tz)
 
-    # your manually chosen target date at midnight
-    target = tz.localize(datetime(year, month, day, 0, 0, 0))
+    def dt(y, m, d, hh=0, mm=0, ss=0):
+        return tz.localize(datetime(y, m, d, hh, mm, ss))
 
-    # compute the difference
-    delta       = target - now
-    days        = delta.days
-    rem_seconds = delta.seconds
-    hours = rem_seconds // 3600
-    rem_seconds %= 3600
-    minutes     = rem_seconds // 60
-    seconds     = rem_seconds % 60
+    # Build candidate quarters across adjacent years
+    candidates = []
+    for y in (now.year - 1, now.year, now.year + 1):
+        candidates.append(("Summer", dt(y, 6, 16), dt(y, 9, 12, 23, 59, 59)))
+        candidates.append(("Autumn", dt(y, 9, 29), dt(y, 12, 13, 23, 59, 59)))
+        candidates.append(("Winter", dt(y, 1, 5), dt(y, 3, 14, 23, 59, 59)))
+        candidates.append(("Spring", dt(y, 3, 23), dt(y, 6, 6, 23, 59, 59)))
 
-    start_date = tz.localize(datetime(year_start, month_start, day_start, 0, 0, 0))
-    daysspent = (now - start_date).days
+    # Check if we're inside a quarter
+    for quarter_name, start, end in candidates:
+        if start <= now <= end:
+            delta = end - now
+            days = delta.days
+            rem_seconds = delta.seconds
+            hours = rem_seconds // 3600
+            rem_seconds %= 3600
+            minutes = rem_seconds // 60
+            seconds = rem_seconds % 60
 
-    message = f"**DAY NUMBER {daysspent} OF {quarter_name.upper()}!! 🔔** There are {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds remaining in {quarter_name}. \n\n https://vps.dariel.us/uchiverify/images/{daysspent}.png"
-    return message
+            daysspent = (now - start).days + 1
+
+            return (
+                f"**DAY NUMBER {daysspent} OF {quarter_name.upper()}!! 🔔** "
+                f"There are {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds remaining in {quarter_name}.\n\n"
+                f"https://vps.dariel.us/uchiverify/images/{daysspent}.png"
+            )
+
+    # Otherwise, we're on break — find the next quarter
+    future_starts = sorted(
+        [(start, name) for name, start, end in candidates if start > now],
+        key=lambda x: x[0]
+    )
+    next_start, next_name = future_starts[0]
+
+    days_until = (next_start - now).days
+    return f"We are on break sailors! {next_name} quarter begins in {days_until} days."
 
 
 #async def search_course(query: str):
@@ -232,6 +280,33 @@ async def admin_servers(request):
     stats = load_stats()
     total_commands = sum(stats["commands"].values())
 
+    # Prepare per-server stats
+    servers_data = stats.get("servers", {})
+
+    # Add command stats to each guild info
+    for guild in guilds_info:
+        guild_id_str = str(guild['id'])
+        if guild_id_str in servers_data:
+            guild['total_commands'] = sum(servers_data[guild_id_str].get("commands", {}).values())
+            guild['top_command'] = max(servers_data[guild_id_str].get("commands", {}).items(),
+                                      key=lambda x: x[1], default=("None", 0))
+        else:
+            guild['total_commands'] = 0
+            guild['top_command'] = ("None", 0)
+
+    # Prepare daily stats for graph (last 30 days)
+    from collections import defaultdict
+    daily_totals = defaultdict(int)
+
+    for guild_id, guild_data in servers_data.items():
+        for date, commands in guild_data.get("daily", {}).items():
+            daily_totals[date] += sum(commands.values())
+
+    # Sort by date and get last 30 days
+    sorted_dates = sorted(daily_totals.keys())[-30:]
+    dates_json = json.dumps(sorted_dates)
+    counts_json = json.dumps([daily_totals[date] for date in sorted_dates])
+
     # Generate HTML
     html = """
     <!DOCTYPE html>
@@ -346,7 +421,17 @@ async def admin_servers(request):
                 color: #4CAF50;
                 font-family: monospace;
             }
+            .chart-container {
+                background-color: #333;
+                padding: 20px;
+                border-radius: 8px;
+                margin-bottom: 30px;
+            }
+            canvas {
+                max-height: 400px;
+            }
         </style>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     </head>
     <body>
         <div class="container">
@@ -392,6 +477,11 @@ async def admin_servers(request):
                 </tbody>
             </table>
 
+            <h2>Daily Command Usage (Last 30 Days)</h2>
+            <div class="chart-container">
+                <canvas id="dailyChart"></canvas>
+            </div>
+
             <h2>Server List</h2>
             <table>
                 <thead>
@@ -400,18 +490,23 @@ async def admin_servers(request):
                         <th>Server ID</th>
                         <th>Owner</th>
                         <th>Members</th>
+                        <th>Commands Used</th>
+                        <th>Top Command</th>
                     </tr>
                 </thead>
                 <tbody>
     """
 
     for guild in guilds_info:
+        top_cmd_name, top_cmd_count = guild['top_command']
         html += f"""
                     <tr>
                         <td class="server-name">{guild['name']}</td>
                         <td class="server-id">{guild['id']}</td>
                         <td>{guild['owner']}</td>
                         <td class="member-count">{guild['member_count']:,}</td>
+                        <td class="member-count">{guild['total_commands']:,}</td>
+                        <td class="command-name">/{top_cmd_name} ({top_cmd_count})</td>
                     </tr>
         """
 
@@ -419,6 +514,63 @@ async def admin_servers(request):
                 </tbody>
             </table>
         </div>
+
+        <script>
+            const ctx = document.getElementById('dailyChart');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: """ + dates_json + """,
+                    datasets: [{
+                        label: 'Commands Executed',
+                        data: """ + counts_json + """,
+                        borderColor: '#800000',
+                        backgroundColor: 'rgba(128, 0, 0, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#e0e0e0',
+                                font: {
+                                    family: 'Gotham'
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#e0e0e0',
+                                font: {
+                                    family: 'Gotham'
+                                }
+                            },
+                            grid: {
+                                color: '#444'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#e0e0e0',
+                                font: {
+                                    family: 'Gotham'
+                                }
+                            },
+                            grid: {
+                                color: '#444'
+                            }
+                        }
+                    }
+                }
+            });
+        </script>
     </body>
     </html>
     """
@@ -472,6 +624,51 @@ class VerifyView(discord.ui.View):
         )
         logging.info(f"Sent verification link to user {user_id} in guild {guild_id}")
 
+class SetChannelModal(discord.ui.Modal, title="Customize Verification Message"):
+    """Modal for customizing the verification message with multi-line support."""
+
+    title_input = discord.ui.TextInput(
+        label="Title",
+        placeholder="Verify your UChicago Affiliation",
+        default="Verify your UChicago Affiliation",
+        required=False,
+        max_length=256
+    )
+
+    description_input = discord.ui.TextInput(
+        label="Description",
+        placeholder="Click the button below to verify...",
+        default="Click the button below to verify your UChicago affiliation and get access.",
+        required=False,
+        style=discord.TextStyle.paragraph,
+        max_length=4000
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        """Handle modal submission."""
+        # MUST respond to interaction first before doing anything else
+        await interaction.response.defer(ephemeral=True)
+
+        embed_title = self.title_input.value or "Verify your UChicago Affiliation"
+        embed_description = self.description_input.value or "Click the button below to verify your UChicago affiliation and get access."
+
+        # Create the embed message
+        embed = discord.Embed(
+            title=embed_title,
+            description=embed_description,
+            colour=0x800000)
+        embed.set_author(
+            name="UChiVerify",
+            url="https://discord.gg/syNk2wNp2x",
+            icon_url="https://camo.githubusercontent.com/a56e4acafe0c671c795cd5b1d86c7262514a99408d5a81d040dc45db8456bf6c/68747470733a2f2f692e696d6775722e636f6d2f74614967354b622e706e67")
+        view = VerifyView()
+
+        # Send the embed with the Verify button
+        await interaction.channel.send(embed=embed, view=view)
+        await interaction.followup.send("Verification prompt posted!", ephemeral=True)
+        logging.info(f"/setchannel used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
+        track_command("setchannel", interaction.guild.id if interaction.guild else None)
+
 @bot.tree.command(name="setchannel", description="Post UChicago verification message in this channel (admins only)")
 async def setchannel(interaction: discord.Interaction):
     """Slash command to initialize verification in the current channel (admin only)."""
@@ -479,21 +676,10 @@ async def setchannel(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("You need to be a server admin to use this command.", ephemeral=True)
         return
-    # Create the embed message
-    embed = discord.Embed(
-        title="Verify your UChicago Affiliation",
-        description="Click the button below to verify your UChicago email and get access.",
-        colour=0x800000)
-    embed.set_author(
-        name="UChiVerify",
-        url="https://discord.gg/syNk2wNp2x",
-        icon_url="https://camo.githubusercontent.com/a56e4acafe0c671c795cd5b1d86c7262514a99408d5a81d040dc45db8456bf6c/68747470733a2f2f692e696d6775722e636f6d2f74614967354b622e706e67")
-    view = VerifyView()
-    # Send the embed with the Verify button
-    await interaction.channel.send(embed=embed, view=view)
-    await interaction.response.send_message("✅ Verification prompt posted in this channel.", ephemeral=True)
-    logging.info(f"/setchannel used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
-    track_command("setchannel")
+
+    # Show the modal to customize the message
+    modal = SetChannelModal()
+    await interaction.response.send_modal(modal)
 
 @bot.tree.command(name="gethelp", description="Get a link to the support Discord server.")
 async def support(interaction: discord.Interaction):
@@ -508,7 +694,7 @@ async def support(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
     logging.info(f"/gethelp used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
-    track_command("gethelp")
+    track_command("gethelp", interaction.guild.id if interaction.guild else None)
 
 @bot.tree.command(name="shadydealer", description="Get a random article title from the Shady Dealer.")
 async def random_article(interaction: discord.Interaction):
@@ -526,19 +712,50 @@ async def random_article(interaction: discord.Interaction):
         allowed_mentions=discord.AllowedMentions.none()
     )
     logging.info(f"/shadydealer used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
-    track_command("shadydealer")
+    track_command("shadydealer", interaction.guild.id if interaction.guild else None)
 
-@bot.tree.command(name="daysinquarter", description="Use this command if you're wondering how long the rest of your journey will be this quarter.")
+@bot.tree.command(
+    name="daysinquarter",
+    description="Use this command if you're wondering how long the rest of your journey will be this quarter."
+)
 async def daysinquarter(interaction: discord.Interaction):
-    tz = pytz.timezone('America/Chicago')
+    tz = pytz.timezone("America/Chicago")
     now = datetime.now(tz)
 
-    year_start, month_start, day_start = 2025, 9, 29
-    year, month, day = 2025, 12, 13
-    quarter_name = "Autumn quarter"
+    def dt(y, m, d, hh=0, mm=0, ss=0):
+        return tz.localize(datetime(y, m, d, hh, mm, ss))
 
-    target = tz.localize(datetime(year, month, day, 0, 0, 0))
-    delta = target - now
+    # Define quarter windows (check surrounding years)
+    quarters = []
+    for y in (now.year - 1, now.year, now.year + 1):
+        quarters.extend([
+            ("Summer quarter", dt(y, 6, 16), dt(y, 9, 12, 23, 59, 59)),
+            ("Autumn quarter", dt(y, 9, 29), dt(y, 12, 13, 23, 59, 59)),
+            ("Winter quarter", dt(y, 1, 5),  dt(y, 3, 14, 23, 59, 59)),
+            ("Spring quarter", dt(y, 3, 23), dt(y, 6, 6, 23, 59, 59)),
+        ])
+
+    # Try to find current quarter
+    current = None
+    for qname, start, end in quarters:
+        if start <= now <= end:
+            current = (qname, start, end)
+            break
+
+    # If not in a quarter, treat break as a "quarter"
+    if current is None:
+        # find the surrounding break window: end of last quarter → start of next quarter
+        past_ends = [(end, qname) for qname, start, end in quarters if end < now]
+        future_starts = [(start, qname) for qname, start, end in quarters if start > now]
+
+        last_end, _ = max(past_ends, key=lambda x: x[0])
+        next_start, _ = min(future_starts, key=lambda x: x[0])
+
+        current = ("Break", last_end, next_start)
+
+    quarter_name, start_date, end_date = current
+
+    delta = end_date - now
     days = delta.days
     rem_seconds = delta.seconds
     hours = rem_seconds // 3600
@@ -546,22 +763,29 @@ async def daysinquarter(interaction: discord.Interaction):
     minutes = rem_seconds // 60
     seconds = rem_seconds % 60
 
-    start_date = tz.localize(datetime(year_start, month_start, day_start, 0, 0, 0))
-    daysspent = (now - start_date).days
+    daysspent = (now - start_date).days + 1
 
     embed = discord.Embed(
         title=f"DAY NUMBER {daysspent} OF {quarter_name.upper()}! 🔔",
-        description=f"There are **{days} days, {hours} hours, {minutes} minutes, and {seconds} seconds** remaining in {quarter_name}.",
-        color=0x800000
+        description=(
+            f"There are **{days} days, {hours} hours, "
+            f"{minutes} minutes, and {seconds} seconds** remaining in {quarter_name}."
+        ),
+        color=0x800000 if quarter_name != "Break" else 0x555555
     )
-    embed.set_image(url=f"https://vps.dariel.us/uchiverify/images/{daysspent}.png")
+    embed.set_image(
+        url=f"https://vps.dariel.us/uchiverify/images/{daysspent}.png"
+    )
 
     await interaction.response.send_message(
         embed=embed,
         allowed_mentions=discord.AllowedMentions.none()
     )
-    logging.info(f"/daysinquarter used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
-    track_command("daysinquarter")
+    logging.info(
+        f"/daysinquarter used by {interaction.user.id} in guild {interaction.guild.id} "
+        f"(channel {interaction.channel.id})"
+    )
+    track_command("daysinquarter", interaction.guild.id if interaction.guild else None)
 
 @bot.tree.command(name="scav", description="Get a random item from a Scav list (1998-2024)")
 async def random_scav(interaction: discord.Interaction):
@@ -579,7 +803,7 @@ async def random_scav(interaction: discord.Interaction):
         allowed_mentions=discord.AllowedMentions.none()
     )
     logging.info(f"/scav used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
-    track_command("scav")
+    track_command("scav", interaction.guild.id if interaction.guild else None)
 
 @bot.tree.command(name="finalsmotivation", description="Get some finals motivation with a cute cat gif")
 async def finals_motivation(interaction: discord.Interaction):
@@ -633,7 +857,7 @@ async def finals_motivation(interaction: discord.Interaction):
         file=file
     )
     logging.info(f"/finalsmotivation used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
-    track_command("finalsmotivation")
+    track_command("finalsmotivation", interaction.guild.id if interaction.guild else None)
 
 #@bot.tree.command(name="coursereview", description="Find reviews for a course code")
 #@app_commands.describe(query="Course code to search, e.g. DATA 11800")
@@ -848,7 +1072,7 @@ async def thingstodo(interaction: discord.Interaction, timeframe: app_commands.C
     view = EventView(event['url'])
     await interaction.followup.send(embed=embed, view=view)
     logging.info(f"/thingstodo used by {interaction.user.id} in guild {interaction.guild.id} (channel {interaction.channel.id})")
-    track_command("thingstodo")
+    track_command("thingstodo", interaction.guild.id if interaction.guild else None)
 
 @bot.event
 async def on_ready():

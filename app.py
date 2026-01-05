@@ -52,7 +52,7 @@ def start_auth():
         "client_id": OKTA_CLIENT_ID,
         "redirect_uri": "https://vps.dariel.us/auth/callback",
         "response_type": "code",
-        "scope": "openid email",   # request OIDC scopes
+        "scope": "openid email profile groups",   # request OIDC scopes
         "state": state
     }
     
@@ -101,7 +101,7 @@ def auth_callback():
     if not email:
         logger.error("No email found in OIDC profile!")
         return render_template("verificationfailed.html", error="Your email could not be obtained.")
-    logger.info(f"Verified Discord user {user_id}, guild {guild_id}, email {email}")
+    logger.info(f"Verified Discord user {user_id}, guild {guild_id}: {profile}")
     # Assign the "UChicago Verified" role in Discord via Bot API
     bot_token = os.getenv("DISCORD_BOT_TOKEN")
     if bot_token:
@@ -116,7 +116,7 @@ def auth_callback():
                     break
         if role_id is None:
             # Create the role (with default permissions)
-            new_role = {"name": "UChicago Verified", "mentionable": True}
+            new_role = {"name": "UChicago Verified", "mentionable": False}
             create_res = requests.post(f"https://discord.com/api/v10/guilds/{guild_id}/roles",
                                        json=new_role, headers=headers)
             if create_res.status_code in (200, 201):

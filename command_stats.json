@@ -1,1 +1,121 @@
-{"commands": {}}
+{
+  "commands": {
+    "finalsmotivation": 21,
+    "scav": 2,
+    "shadydealer": 1,
+    "thingstodo": 6,
+    "daysinquarter": 7,
+    "setchannel": 8
+  },
+  "servers": {
+    "915482653346631690": {
+      "commands": {
+        "scav": 2,
+        "shadydealer": 1,
+        "finalsmotivation": 17,
+        "thingstodo": 2,
+        "daysinquarter": 4
+      },
+      "daily": {
+        "2025-11-23": {
+          "scav": 1,
+          "shadydealer": 1
+        },
+        "2025-11-24": {
+          "finalsmotivation": 5
+        },
+        "2025-11-26": {
+          "thingstodo": 1
+        },
+        "2025-11-30": {
+          "daysinquarter": 1,
+          "finalsmotivation": 1
+        },
+        "2025-12-02": {
+          "scav": 1
+        },
+        "2025-12-07": {
+          "finalsmotivation": 1
+        },
+        "2025-12-08": {
+          "finalsmotivation": 2
+        },
+        "2025-12-09": {
+          "finalsmotivation": 8
+        },
+        "2025-12-17": {
+          "daysinquarter": 2
+        },
+        "2025-12-18": {
+          "thingstodo": 1
+        },
+        "2026-01-05": {
+          "daysinquarter": 1
+        }
+      }
+    },
+    "1307594293640298517": {
+      "commands": {
+        "thingstodo": 2,
+        "finalsmotivation": 2,
+        "daysinquarter": 3,
+        "setchannel": 1
+      },
+      "daily": {
+        "2025-11-23": {
+          "thingstodo": 1,
+          "finalsmotivation": 2
+        },
+        "2025-12-02": {
+          "thingstodo": 1,
+          "daysinquarter": 1
+        },
+        "2025-12-06": {
+          "setchannel": 1
+        },
+        "2026-01-03": {
+          "daysinquarter": 2
+        }
+      }
+    },
+    "1347440495713849428": {
+      "commands": {
+        "thingstodo": 2,
+        "setchannel": 5,
+        "finalsmotivation": 1
+      },
+      "daily": {
+        "2025-12-01": {
+          "thingstodo": 2,
+          "setchannel": 1
+        },
+        "2025-12-02": {
+          "finalsmotivation": 1
+        },
+        "2025-12-03": {
+          "setchannel": 4
+        }
+      }
+    },
+    "697230717976838286": {
+      "commands": {
+        "setchannel": 1
+      },
+      "daily": {
+        "2025-12-30": {
+          "setchannel": 1
+        }
+      }
+    },
+    "1030606611028381726": {
+      "commands": {
+        "setchannel": 1
+      },
+      "daily": {
+        "2026-01-05": {
+          "setchannel": 1
+        }
+      }
+    }
+  }
+}
