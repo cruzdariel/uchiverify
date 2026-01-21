@@ -3,9 +3,11 @@
     "finalsmotivation": 21,
     "scav": 2,
     "shadydealer": 1,
-    "thingstodo": 6,
-    "daysinquarter": 7,
-    "setchannel": 8
+    "thingstodo": 7,
+    "daysinquarter": 10,
+    "setchannel": 8,
+    "classesabout": 17,
+    "gethelp": 1
   },
   "servers": {
     "915482653346631690": {
@@ -14,7 +16,8 @@
         "shadydealer": 1,
         "finalsmotivation": 17,
         "thingstodo": 2,
-        "daysinquarter": 4
+        "daysinquarter": 5,
+        "classesabout": 7
       },
       "daily": {
         "2025-11-23": {
@@ -50,7 +53,10 @@
           "thingstodo": 1
         },
         "2026-01-05": {
-          "daysinquarter": 1
+          "daysinquarter": 2
+        },
+        "2026-01-20": {
+          "classesabout": 7
         }
       }
     },
@@ -58,7 +64,7 @@
       "commands": {
         "thingstodo": 2,
         "finalsmotivation": 2,
-        "daysinquarter": 3,
+        "daysinquarter": 4,
         "setchannel": 1
       },
       "daily": {
@@ -75,14 +81,20 @@
         },
         "2026-01-03": {
           "daysinquarter": 2
+        },
+        "2026-01-05": {
+          "daysinquarter": 1
         }
       }
     },
     "1347440495713849428": {
       "commands": {
-        "thingstodo": 2,
+        "thingstodo": 3,
         "setchannel": 5,
-        "finalsmotivation": 1
+        "finalsmotivation": 1,
+        "daysinquarter": 1,
+        "classesabout": 10,
+        "gethelp": 1
       },
       "daily": {
         "2025-12-01": {
@@ -94,6 +106,17 @@
         },
         "2025-12-03": {
           "setchannel": 4
+        },
+        "2026-01-05": {
+          "daysinquarter": 1,
+          "thingstodo": 1
+        },
+        "2026-01-20": {
+          "classesabout": 9,
+          "gethelp": 1
+        },
+        "2026-01-21": {
+          "classesabout": 1
         }
       }
     },

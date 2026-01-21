@@ -155,69 +155,6 @@ def days_in_quarter(tz_name="America/Chicago"):
     days_until = (next_start - now).days
     return f"We are on break sailors! {next_name} quarter begins in {days_until} days."
 
-
-#async def search_course(query: str):
-#    """
-#    Returns (coursenum, coursename, reviewurl)
-#    or raises aiohttp.ClientError on network/API failures,
-#    or returns ("", "", error_message) if the API returned no data.
-#    """
-#    base = "https://api.uofcourses.com"
-#    timeout = ClientTimeout(total=5)
-#    async with aiohttp.ClientSession(timeout=timeout) as session:
-#        # 1) Search endpoint
-#        url_search = f"{base}/Courses/Search?queryString={query}&page=0&pageSize=1"
-#        async with session.get(url_search) as resp:
-#            if resp.status != 200:
-#                return "", "", f"Search failed [{resp.status}] for `{query}`"
-#            data = await resp.json()
-#
-#        courses = data.get("courses", [])
-#        if not courses:
-#            return "", "", f"No course found for `{query}`."
-#
-#        course = courses[0]
-#        # Check the query against normalized courseNumbers
-#        if not any(query.lower() in cn.lower() for cn in course.get("courseNumbers", [])):
-#            suggestion = course["courseNumbers"][0]
-#            return "", "", f"No course found for `{query}` (did you mean `{suggestion}`?)"
-#
-#        # 2) Fetch the review link
-#        course_id = course["id"]
-#        url_detail = f"{base}/Courses/Course/{course_id}"
-#        async with session.get(url_detail) as resp2:
-#            if resp2.status != 200:
-#                review_url = ""
-#            else:
-#                detail = await resp2.json()
-#               try:
-#                    review_url = detail["sections"][0]["url"]
-#                except (KeyError, IndexError):
-#                    review_url = ""
-#
-#        return course["courseNumbers"][0], course["title"], review_url
-#
-#    course = courses[0]
-#    # see if the user’s query actually matches one of the courseNumbers
-#    if any(query.lower() in cn.lower() for cn in course.get("courseNumbers", [])):
-#        # exact-ish match → fetch the review URL
-#        def get_latest_review_link(num):
-#            ci = requests.get(f"https://api.uofcourses.com/Courses/Course/{num}")
-#            data_ci = ci.json()
-#            try:
-#                return data_ci["sections"][0]["url"]
-#            except (IndexError, KeyError):
-#                return ""
-#        return (
-#            course["courseNumbers"][0],
-#            course["title"],
-#            get_latest_review_link(course["id"])
-#        )
-#    else:
-#        # found something, but query didn’t match the normalized courseNumbers
-#        suggestion = course["courseNumbers"][0]
-#        return "", "", f"No course found for `{query}` (did you mean `{suggestion}`?)"
-
 # ── Health endpoint ───────────────────────────────────────────────────────────
 routes = web.RouteTableDef()
 
